@@ -16,9 +16,9 @@ package module
 
 import (
 	"strings"
-	"time"
 
 	pgs "github.com/lyft/protoc-gen-star"
+	"github.com/prometheus/common/model"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -63,8 +63,26 @@ func (m *Module) Check(msg pgs.Message) {
 
 		m.CheckFieldRules(f.Type(), &fieldDefaults)
 
+		if f.InOneOf() {
+			m.CheckOneOf(f.OneOf())
+		}
 		m.Pop()
 	}
+}
+
+func (m *Module) CheckOneOf(oneOf pgs.OneOf) {
+	var oneOfDefaults string
+	ok, err := oneOf.Extension(defaults.E_Oneof, &oneOfDefaults)
+	m.CheckErr(err, "unable to read defaults extension from oneof")
+	if !ok {
+		return
+	}
+	for _, field := range oneOf.Fields() {
+		if field.Name().String() == oneOfDefaults {
+			return
+		}
+	}
+	m.Failf("oneof field '%s' not found in %s", oneOfDefaults, oneOf.Name().String())
 }
 
 func (m *Module) CheckFieldRules(typ FieldType, fieldDefaults *defaults.FieldDefaults) {
@@ -179,7 +197,7 @@ func (m *Module) CheckDuration(ft FieldType, r string) {
 	if embed := ft.Embed(); embed == nil || embed.WellKnownType() != pgs.DurationWKT {
 		m.Failf("unexpected field type (%T) for Duration, expected google.protobuf.Duration ", ft)
 	}
-	_, err := time.ParseDuration(r)
+	_, err := model.ParseDuration(r)
 	m.Assert(err == nil, "cannot parse duration ", r, err)
 }
 

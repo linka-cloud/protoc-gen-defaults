@@ -42,10 +42,8 @@ func (x *Test) Default() {
 	if x.EnumField == 0 {
 		x.EnumField = 2
 	}
-	if x.MessageField != nil {
-		if v, ok := interface{}(x.MessageField).(interface{ Default() }); ok {
-			v.Default()
-		}
+	if v, ok := interface{}(x.MessageField).(interface{ Default() }); ok && x.MessageField != nil {
+		v.Default()
 	}
 	if x.NumberValueField == nil {
 		x.NumberValueField = &wrapperspb.Int64Value{Value: 43}
@@ -62,17 +60,32 @@ func (x *Test) Default() {
 	if x.DurationValueField == nil {
 		x.DurationValueField = durationpb.New(42000000000)
 	}
-	// One oneof not supported
-	// Two oneof not supported
-	// Three oneof not supported
-	// Four oneof not supported
+	if x.Oneof == nil {
+		x.Oneof = &Test_Two{}
+	}
+	switch x := x.Oneof.(type) {
+	case *Test_One:
+		if v, ok := interface{}(x.One).(interface{ Default() }); ok && x.One != nil {
+			v.Default()
+		}
+	case *Test_Two:
+		if v, ok := interface{}(x.Two).(interface{ Default() }); ok && x.Two != nil {
+			v.Default()
+		}
+	case *Test_Three:
+		if v, ok := interface{}(x.Three).(interface{ Default() }); ok && x.Three != nil {
+			v.Default()
+		}
+	case *Test_Four:
+		if x.Four == 0 {
+			x.Four = 1
+		}
+	}
 	if x.Descriptor_ == nil {
 		x.Descriptor_ = &descriptorpb.DescriptorProto{}
 	}
-	if x.Descriptor_ != nil {
-		if v, ok := interface{}(x.Descriptor_).(interface{ Default() }); ok {
-			v.Default()
-		}
+	if v, ok := interface{}(x.Descriptor_).(interface{ Default() }); ok && x.Descriptor_ != nil {
+		v.Default()
 	}
 	if x.TimeValueFieldWithDefault == nil {
 		x.TimeValueFieldWithDefault = &timestamppb.Timestamp{Seconds: -562032000, Nanos: 0}

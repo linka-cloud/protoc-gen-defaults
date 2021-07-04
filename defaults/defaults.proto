@@ -19,7 +19,7 @@ option go_package = "go.linka.cloud/protoc-gen-defaults/defaults;defaults";
 
 import "google/protobuf/descriptor.proto";
 
-// Defaults rules applied at the message level
+// Defaults values applied at the message level
 extend google.protobuf.MessageOptions {
 	// Disabled nullifies any defaults for this message, including any
 	// message fields associated with it that do support defaults.

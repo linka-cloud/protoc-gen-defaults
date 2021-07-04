@@ -29,6 +29,7 @@ func Defaults() *Module {
 	return &Module{
 		ModuleBase: &pgs.ModuleBase{},
 		imports:    make(map[string]struct{}),
+		oneOfs:     make(map[string]struct{}),
 	}
 }
 
@@ -37,6 +38,7 @@ type Module struct {
 	ctx     pgsgo.Context
 	tpl     *template.Template
 	imports map[string]struct{}
+	oneOfs  map[string]struct{}
 }
 
 func (m *Module) Name() string {
@@ -108,6 +110,18 @@ func (m *Module) generate(f pgs.File) {
 	}
 	name := m.ctx.OutputPath(f).SetExt(".defaults.go")
 	m.AddGeneratorTemplateFile(name.String(), m.tpl, f)
+}
+
+func (m *Module) isOneOfDone(oneOf pgs.OneOf) bool {
+	_, done := m.oneOfs[oneOf.FullyQualifiedName()]
+	return done
+}
+
+func (m *Module) setOneOfDone(oneOf pgs.OneOf) {
+	if oneOf == nil {
+		return
+	}
+	m.oneOfs[oneOf.FullyQualifiedName()] = struct{}{}
 }
 
 const defaultsTpl = `{{ comment .SyntaxSourceCodeInfo.LeadingComments }}

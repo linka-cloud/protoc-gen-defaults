@@ -22,11 +22,12 @@ import (
 
 	"github.com/lithammer/dedent"
 	pgs "github.com/lyft/protoc-gen-star"
+	"github.com/prometheus/common/model"
 
 	"go.linka.cloud/protoc-gen-defaults/defaults"
 )
 
-func (m *Module) genFieldDefaults(f pgs.Field) (string, bool) {
+func (m *Module) genFieldDefaults(f pgs.Field, genOneOfField ...bool) (string, bool) {
 	m.Push(f.Name().String())
 	defer m.Pop()
 	var fieldDefaults defaults.FieldDefaults
@@ -38,8 +39,40 @@ func (m *Module) genFieldDefaults(f pgs.Field) (string, bool) {
 	if emb := f.Type().Embed(); emb != nil {
 		wk = emb.WellKnownType()
 	}
-	if f.InOneOf() {
-		return fmt.Sprintf("\n// %s oneof not supported", m.ctx.Name(f)), true
+	if !isOk(genOneOfField) && f.InOneOf() {
+		if m.isOneOfDone(f.OneOf()) {
+			return "", false
+		}
+		m.setOneOfDone(f.OneOf())
+		var out string
+		var oneOfDefault string
+		if _, err := f.OneOf().Extension(defaults.E_Oneof, &oneOfDefault); err != nil {
+			m.Fail(err)
+		}
+		var defaultField pgs.Field
+		for _, f := range f.OneOf().Fields() {
+			if f.Name().String() == oneOfDefault {
+				defaultField = f
+			}
+		}
+		if defaultField != nil {
+			out += dedent.Dedent(fmt.Sprintf(`
+				if x.%[1]s == nil {
+					x.%[1]s = &%[2]s{}
+				}`, m.ctx.Name(f.OneOf()), m.ctx.OneofOption(defaultField)))
+		}
+		out += dedent.Dedent(fmt.Sprintf(`
+			switch x := x.%[1]s.(type) {`, m.ctx.Name(f.OneOf())))
+		for _, f := range f.OneOf().Fields() {
+			def, ok := m.genFieldDefaults(f, true)
+			if !ok {
+				continue
+			}
+			out += dedent.Dedent(fmt.Sprintf(`
+				case *%[1]s: %[2]s`, m.ctx.OneofOption(f), def))
+		}
+		out += `}`
+		return out, true
 	}
 	switch r := fieldDefaults.Type.(type) {
 	case *defaults.FieldDefaults_Float:
@@ -76,7 +109,7 @@ func (m *Module) genFieldDefaults(f pgs.Field) (string, bool) {
 	case *defaults.FieldDefaults_Enum:
 		return m.simpleDefaults(f, 0, fieldDefaults.GetEnum(), wk), true
 	case *defaults.FieldDefaults_Duration:
-		d, err := time.ParseDuration(fieldDefaults.GetDuration())
+		d, err := model.ParseDuration(fieldDefaults.GetDuration())
 		if err != nil {
 			m.Failf("invalid duration: %s %v", fieldDefaults.GetDuration(), err)
 		}
@@ -106,10 +139,8 @@ func (m *Module) genFieldDefaults(f pgs.Field) (string, bool) {
 				m.ctx.Name(f), m.ctx.Type(f).Value()))
 		}
 		return decl + dedent.Dedent(fmt.Sprintf(`
-			if x.%[1]s != nil {
-				if v, ok := interface{}(x.%[1]s).(interface{Default()}); ok {
-					v.Default()
-				}
+			if v, ok := interface{}(x.%[1]s).(interface{Default()}); ok && x.%[1]s != nil {
+				v.Default()
 			}`, m.ctx.Name(f))), true
 	case nil: // noop
 	default:
@@ -120,16 +151,17 @@ func (m *Module) genFieldDefaults(f pgs.Field) (string, bool) {
 }
 
 func (m *Module) simpleDefaults(f pgs.Field, zero, value interface{}, wk pgs.WellKnownType) string {
+	name := m.ctx.Name(f).String()
 	if wk != "" && wk != pgs.UnknownWKT {
 		return dedent.Dedent(fmt.Sprintf(`
 			if x.%[1]s == nil {
 				x.%[1]s = &wrapperspb.%[2]s{Value: %[3]v}
-			}`, m.ctx.Name(f), wk, value))
+			}`, name, wk, value))
 	}
 	return dedent.Dedent(fmt.Sprintf(`
 		if x.%[1]s == %[3]v {
 			x.%[1]s = %[2]v
-		}`, m.ctx.Name(f), value, zero))
+		}`, name, value, zero))
 }
 
 func parseTime(s string) (time.Time, error) {
@@ -147,4 +179,8 @@ func parseTime(s string) (time.Time, error) {
 		}
 	}
 	return time.Time{}, errors.New("cannot parse timestamp, timestamp supported format: RFC822 / RFC822Z / RFC850 / RFC1123 / RFC1123Z / RFC3339")
+}
+
+func isOk(b []bool) bool {
+	return len(b) > 0 && b[0]
 }

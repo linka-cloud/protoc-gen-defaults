@@ -16,7 +16,6 @@ package debug
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"testing"
 
@@ -42,5 +41,4 @@ func TestDebugGen(t *testing.T) {
 	).RegisterPostProcessor(
 		pgsgo.GoFmt(),
 	).Render()
-	fmt.Println(out.String())
 }

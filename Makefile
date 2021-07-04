@@ -27,9 +27,9 @@ PROTO_OPTS = paths=source_relative
 proto: gen-proto lint
 
 .PHONY: gen-proto
-gen-proto:
+gen-proto: install
 	@find $(PROTO_BASE_PATH) -name '*.proto' -type f -exec \
-    	protoc $(INCLUDE_PROTO_PATH) --go_out=$(PROTO_OPTS):. {} \;
+    	protoc $(INCLUDE_PROTO_PATH) --go_out=$(PROTO_OPTS):. --defaults_out=$(PROTO_OPTS):. {} \;
 
 .PHONY: lint
 lint:
@@ -45,11 +45,6 @@ tests: proto gen-tests
 install:
 	@go install .
 
-.PHONY: gen-tests
+.PHONY: gen-debug
 gen-debug:
 	@protoc -I. --debug_out="debug:." tests/pb/test.proto
-
-
-.PHONY: gen-example
-gen-tests: install
-	@protoc -I. --go_out=$(PROTO_OPTS):. --defaults_out=$(PROTO_OPTS):. tests/pb/test.proto
