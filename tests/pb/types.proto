@@ -1,0 +1,91 @@
+// Copyright 2021 Linka Cloud  All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package tests;
+
+option go_package = "go.linka.cloud/protoc-gen-defaults/tests/pb;pb";
+
+import "defaults/defaults.proto";
+
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+
+message Types {
+	// Scalar Field Types
+	float float = 1 [(defaults.value).float = 0.42];
+	double double = 2 [(defaults.value).double = 0.42];
+	int32 int32 = 3 [(defaults.value).int32 = 42];
+	int64 int64 = 4 [(defaults.value).int64 = 42];
+	uint32 uint32 = 5 [(defaults.value).uint32 = 42];
+	uint64 uint64 = 6 [(defaults.value).uint64 = 42];
+	sint32 sint32 = 7 [(defaults.value).sint32 = 42];
+	sint64 sint64 = 8 [(defaults.value).sint64 = 42];
+	fixed32 fixed32 = 9 [(defaults.value).fixed32 = 42];
+	fixed64 fixed64 = 10 [(defaults.value).fixed64 = 42];
+	sfixed32 sfixed32 = 11 [(defaults.value).sfixed32 = 42];
+	sfixed64 sfixed64 = 12 [(defaults.value).sfixed64 = 42];
+	bool bool = 13 [(defaults.value).bool = true];
+	string string = 14 [(defaults.value).string = "42"];
+	bytes bytes = 15 [(defaults.value).bytes = "42"];
+
+	// Complex Field Types
+	enum Enum {
+		NONE = 0;
+		ONE = 1;
+		TWO = 2;
+	}
+	Enum enum = 16 [(defaults.value).enum = 1];
+	Message message = 17 [(defaults.value).message = {initialize: true, defaults: false}];
+	oneof oneof {
+		option (defaults.oneof) = "two";
+		OneOfOne one = 29 [(defaults.value).message = {defaults: true, initialize: true}];
+		OneOfTwo two = 30 [(defaults.value).message = {defaults: true, initialize: true}];
+		OneOfThree three = 31 [(defaults.value).message = {defaults: true, initialize: true}];
+		Enum four = 32 [(defaults.value).enum = 1];
+	}
+
+	// WellKnow types
+	google.protobuf.Duration duration = 18 [(defaults.value).duration = "2d"];
+	google.protobuf.Timestamp timestamp = 19 [(defaults.value).timestamp = "now"];
+	google.protobuf.DoubleValue double_value = 20 [(defaults.value).double = 0.42];
+	google.protobuf.FloatValue float_value = 21 [(defaults.value).float = 0.42];
+	google.protobuf.Int64Value int64_value = 22 [(defaults.value).int64 = 42];
+	google.protobuf.UInt64Value uint64_value = 23 [(defaults.value).uint64 = 42];
+	google.protobuf.Int32Value int32_value = 24 [(defaults.value).int32 = 42];
+	google.protobuf.UInt32Value uint32_value = 25 [(defaults.value).uint32 = 42];
+	google.protobuf.BoolValue bool_value = 26 [(defaults.value).bool = false];
+	google.protobuf.StringValue string_value = 27 [(defaults.value).string = "42"];
+	google.protobuf.BytesValue bytes_value = 28 [(defaults.value).bytes = "42"];
+}
+
+message Message {
+	string field = 1 [(defaults.value).string = "lonely field"];
+}
+
+message OneOfOne {
+	option (defaults.ignored) = true;
+	string string_field = 1 [(defaults.value).string = "string_field"];
+}
+
+message OneOfTwo {
+	string string_field = 1 [(defaults.value).string = "string_field"];
+}
+
+message OneOfThree {
+	option (defaults.disabled) = true;
+	string string_field = 1 [(defaults.value).string = "string_field"];
+}

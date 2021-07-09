@@ -59,7 +59,7 @@ func (m *Module) InitContext(c pgs.BuildContext) {
 				if i == len(parts)-1 && v == "" {
 					return out
 				}
-				out += "// " + v + "\n"
+				out += "//" + v + "\n"
 			}
 			return out
 		},

@@ -16,18 +16,38 @@ MODULE = go.linka.cloud/protoc-gen-defaults
 
 
 PROTO_BASE_PATH = $(PWD)
+TEST_PROTO_BASE_PATH = $(PWD)/tests/pb
 
 INCLUDE_PROTO_PATH = -I$(PROTO_BASE_PATH) \
 	-I $(shell go list -m -f {{.Dir}} google.golang.org/protobuf)
 
 PROTO_OPTS = paths=source_relative
 
+DEFAULTS_PROTO = defaults/defaults.proto
+
+$(shell mkdir -p .bin)
+
+export GOBIN=$(PWD)/.bin
+
+export PATH := $(GOBIN):$(PATH)
+
+bin:
+	@go install github.com/golang/protobuf/protoc-gen-go
+	@go install github.com/lyft/protoc-gen-star/protoc-gen-debug
+
+clean:
+	@rm -rf .bin
+	@find $(PROTO_BASE_PATH) -name '*.pb*.go' -type f -exec rm {} \;
 
 .PHONY: proto
 proto: gen-proto lint
 
+.PHONY: defaults-proto
+defaults-proto:
+	@protoc $(INCLUDE_PROTO_PATH) --go_out=$(PROTO_OPTS):. $(DEFAULTS_PROTO)
+
 .PHONY: gen-proto
-gen-proto: install
+gen-proto: defaults-proto install
 	@find $(PROTO_BASE_PATH) -name '*.proto' -type f -exec \
     	protoc $(INCLUDE_PROTO_PATH) --go_out=$(PROTO_OPTS):. --defaults_out=$(PROTO_OPTS):. {} \;
 
@@ -38,7 +58,8 @@ lint:
 
 .PHONY: tests
 tests: proto gen-tests
-	@go test -v ./...
+	@go test -v ./module
+	@go test -v ./tests
 
 
 .PHONY: install
@@ -46,5 +67,10 @@ install:
 	@go install .
 
 .PHONY: gen-debug
-gen-debug:
+gen-debug: defaults-proto
 	@protoc -I. --debug_out="debug:." tests/pb/test.proto
+
+.PHONY: gen-tests
+gen-tests:
+	@@find $(TEST_PROTO_BASE_PATH) -name '*.proto' -type f -exec \
+         	protoc $(INCLUDE_PROTO_PATH) --go_out=$(PROTO_OPTS):. --defaults_out=$(PROTO_OPTS):. {} \;

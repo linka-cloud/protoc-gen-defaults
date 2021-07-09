@@ -17,10 +17,49 @@ package tests
 import (
 	"testing"
 
+	assert2 "github.com/stretchr/testify/assert"
+	require2 "github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
 	"go.linka.cloud/protoc-gen-defaults/tests/pb"
 )
 
 func TestDefaults(t *testing.T) {
-	test := pb.Test{}
+	assert := assert2.New(t)
+	require := require2.New(t)
+	now := timestamppb.Now()
+	expect := &pb.Test{
+		StringField:          "string_field",
+		NumberField:          42,
+		BoolField:            true,
+		EnumField:            2,
+		MessageField:         nil,
+		RepeatedStringField:  nil,
+		RepeatedMessageField: nil,
+		NumberValueField:     wrapperspb.Int64(43),
+		StringValueField:     wrapperspb.String("string_value"),
+		BoolValueField:       wrapperspb.Bool(false),
+		DurationValueField:   durationpb.New(25401600000000000),
+		Oneof: &pb.Test_Two{
+			Two: &pb.OneOfTwo{
+				StringField: "string_field",
+			},
+		},
+		Descriptor_:               &descriptorpb.DescriptorProto{},
+		TimeValueFieldWithDefault: &timestamppb.Timestamp{Seconds: -562032000},
+		Bytes:                     []byte("??"),
+	}
+
+	test := &pb.Test{}
 	test.Default()
+	require.NotNil(test.TimeValueField)
+	assert.InDelta(now.Seconds, test.TimeValueField.Seconds, 1)
+	test.TimeValueField = nil
+	assert.Equal(expect, test)
+
+	_, generated := interface{}(&pb.OneOfOne{}).(interface{ Default() })
+	assert.False(generated)
 }

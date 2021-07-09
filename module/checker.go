@@ -164,11 +164,13 @@ func (m *Module) CheckEnum(ft FieldType, r uint32) {
 	}
 
 	defined := typ.Enum().Values()
-	vals := make(map[int32]struct{}, len(defined))
 
 	for _, val := range defined {
-		vals[val.Value()] = struct{}{}
+		if val.Value() == int32(r) {
+			return
+		}
 	}
+	m.Failf("unexpected enum value %d for %s", r, typ.Enum().Name())
 }
 
 func (m *Module) CheckMessage(f pgs.Field, defaults *defaults.FieldDefaults) {

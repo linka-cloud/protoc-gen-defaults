@@ -20,7 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lithammer/dedent"
 	pgs "github.com/lyft/protoc-gen-star"
 	"github.com/prometheus/common/model"
 
@@ -56,24 +55,25 @@ func (m *Module) genFieldDefaults(f pgs.Field, genOneOfField ...bool) (string, b
 			}
 		}
 		if defaultField != nil {
-			out += dedent.Dedent(fmt.Sprintf(`
-				if x.%[1]s == nil {
-					x.%[1]s = &%[2]s{}
-				}`, m.ctx.Name(f.OneOf()), m.ctx.OneofOption(defaultField)))
+			out += fmt.Sprint(`
+				if x.`, m.ctx.Name(f.OneOf()), ` == nil {
+					x.`, m.ctx.Name(f.OneOf()), ` = &`, m.ctx.OneofOption(defaultField), `{}
+				}`)
 		}
-		out += dedent.Dedent(fmt.Sprintf(`
-			switch x := x.%[1]s.(type) {`, m.ctx.Name(f.OneOf())))
+		out += fmt.Sprint(`
+			switch x := x.`, m.ctx.Name(f.OneOf()), `.(type) {`)
 		for _, f := range f.OneOf().Fields() {
 			def, ok := m.genFieldDefaults(f, true)
 			if !ok {
 				continue
 			}
-			out += dedent.Dedent(fmt.Sprintf(`
-				case *%[1]s: %[2]s`, m.ctx.OneofOption(f), def))
+			out += fmt.Sprint(`
+				case *`, m.ctx.OneofOption(f), `: `, def)
 		}
 		out += `}`
 		return out, true
 	}
+	name := m.ctx.Name(f)
 	switch r := fieldDefaults.Type.(type) {
 	case *defaults.FieldDefaults_Float:
 		return m.simpleDefaults(f, 0, fieldDefaults.GetFloat(), wk), true
@@ -102,10 +102,18 @@ func (m *Module) genFieldDefaults(f pgs.Field, genOneOfField ...bool) (string, b
 	case *defaults.FieldDefaults_Bool:
 		return m.simpleDefaults(f, false, fieldDefaults.GetBool(), wk), true
 	case *defaults.FieldDefaults_String_:
-		return m.simpleDefaults(f, `""`, fmt.Sprintf(`"%s"`, fieldDefaults.GetString_()), wk), true
+		return m.simpleDefaults(f, `""`, fmt.Sprint(`"`, fieldDefaults.GetString_(), `"`), wk), true
 	case *defaults.FieldDefaults_Bytes:
-		// TODO(adphi): implements
-		return "", false
+		if wk == pgs.UnknownWKT {
+			return fmt.Sprint(`
+				if len(x.`, name, `) == 0 {
+					x.`, name, ` = []byte("`, string(fieldDefaults.GetBytes()), `")
+				}`), true
+		}
+		return fmt.Sprint(`
+				if x.`, name, ` == nil {
+					x.`, name, ` = &wrapperspb.BytesValue{Value: []byte("`, string(fieldDefaults.GetBytes()), `")}
+				}`), true
 	case *defaults.FieldDefaults_Enum:
 		return m.simpleDefaults(f, 0, fieldDefaults.GetEnum(), wk), true
 	case *defaults.FieldDefaults_Duration:
@@ -113,7 +121,7 @@ func (m *Module) genFieldDefaults(f pgs.Field, genOneOfField ...bool) (string, b
 		if err != nil {
 			m.Failf("invalid duration: %s %v", fieldDefaults.GetDuration(), err)
 		}
-		return m.simpleDefaults(f, `nil`, fmt.Sprintf(`durationpb.New(%v)`, int64(d)), pgs.UnknownWKT), true
+		return m.simpleDefaults(f, `nil`, fmt.Sprint(`durationpb.New(`, int64(d), `)`), pgs.UnknownWKT), true
 	case *defaults.FieldDefaults_Timestamp:
 		v := strings.TrimSpace(fieldDefaults.GetTimestamp())
 		if strings.ToLower(v) == "now" {
@@ -123,45 +131,44 @@ func (m *Module) genFieldDefaults(f pgs.Field, genOneOfField ...bool) (string, b
 		if err != nil {
 			m.Failf("invalid timestamp: %s %v", fieldDefaults.GetTimestamp(), err)
 		}
-		v = dedent.Dedent(fmt.Sprintf(`&timestamppb.Timestamp{Seconds: %d, Nanos: %d}
-			`, t.Unix(), t.Nanosecond()))
+		v = fmt.Sprint(`&timestamppb.Timestamp{Seconds: `, t.Unix(), `, Nanos: `, t.Nanosecond(), `}
+			`)
 		return m.simpleDefaults(f, `nil`, v, pgs.UnknownWKT), true
 	case *defaults.FieldDefaults_Message:
 		if fieldDefaults.GetMessage() != nil && fieldDefaults.GetMessage().Defaults != nil && !fieldDefaults.GetMessage().GetDefaults() {
-			return fmt.Sprintf("// %s: defaults disabled by [(defaults.value).message = {defaults: false}]", m.ctx.Name(f)), true
+			return fmt.Sprint("\n// ", name, ": defaults disabled by [(defaults.value).message = {defaults: false}]"), true
 		}
 		var decl string
 		if fieldDefaults.GetMessage().GetInitialize() {
-			decl = dedent.Dedent(fmt.Sprintf(`
-				if x.%[1]s == nil {
-					x.%[1]s = &%[2]s{}
-				}`,
-				m.ctx.Name(f), m.ctx.Type(f).Value()))
+			decl = fmt.Sprint(`
+				if x.`, name, ` == nil {
+					x.`, name, ` = &`, m.ctx.Type(f).Value(), `{}
+				}`)
 		}
-		return decl + dedent.Dedent(fmt.Sprintf(`
-			if v, ok := interface{}(x.%[1]s).(interface{Default()}); ok && x.%[1]s != nil {
+		return decl + fmt.Sprint(`
+			if v, ok := interface{}(x.`, name, `).(interface{Default()}); ok && x.`, name, ` != nil {
 				v.Default()
-			}`, m.ctx.Name(f))), true
+			}`), true
 	case nil: // noop
 	default:
 		_ = r
 		m.Failf("unknown rule type (%T)", fieldDefaults.Type)
 	}
-	return fmt.Sprintf("\n// %s", f.Name()), true
+	return fmt.Sprint("\n// ", f.Name()), true
 }
 
 func (m *Module) simpleDefaults(f pgs.Field, zero, value interface{}, wk pgs.WellKnownType) string {
 	name := m.ctx.Name(f).String()
 	if wk != "" && wk != pgs.UnknownWKT {
-		return dedent.Dedent(fmt.Sprintf(`
-			if x.%[1]s == nil {
-				x.%[1]s = &wrapperspb.%[2]s{Value: %[3]v}
-			}`, name, wk, value))
+		return fmt.Sprint(`
+			if x.`, name, ` == nil {
+				x.`, name, ` = &wrapperspb.`, wk, `{Value: `, value, `}
+			}`)
 	}
-	return dedent.Dedent(fmt.Sprintf(`
-		if x.%[1]s == %[3]v {
-			x.%[1]s = %[2]v
-		}`, name, value, zero))
+	return fmt.Sprint(`
+		if x.`, name, ` == `, zero, ` {
+			x.`, name, ` = `, value, `
+		}`)
 }
 
 func parseTime(s string) (time.Time, error) {

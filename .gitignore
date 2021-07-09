@@ -1,4 +1,5 @@
 .idea
 .clang-format
+.bin
 /debug/code_generator_request.pb.bin
 /defaults/defaults.pb.defaults.go

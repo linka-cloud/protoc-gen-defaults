@@ -4,7 +4,6 @@ go 1.16
 
 require (
 	github.com/golang/protobuf v1.5.2
-	github.com/lithammer/dedent v1.1.0
 	github.com/lyft/protoc-gen-star v0.5.3
 	github.com/prometheus/common v0.29.0
 	github.com/stretchr/testify v1.7.0
