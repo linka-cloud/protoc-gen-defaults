@@ -284,7 +284,8 @@ message OneOfThree {
 ## TODO
 - [x] docs
 - [x] oneof support
+- [ ] set default values by using [Protobuf reflection](https://pkg.go.dev/google.golang.org/protobuf@v1.27.1/reflect/protoreflect)
+- [ ] add more generic methods to use as default value, e.g. *uuid*, *bsonid*... ?
 - [ ] repeated support ?
 - [ ] maps support ?
 - [x] bytes support
-- [ ] add more generic methods to use as default value, e.g. *uuid*, *bsonid*... ?
