@@ -205,7 +205,7 @@ func (m *Module) CheckDuration(ft FieldType, r string) {
 
 func (m *Module) CheckTimestamp(ft FieldType, r string) {
 	if embed := ft.Embed(); embed == nil || embed.WellKnownType() != pgs.TimestampWKT {
-		m.Failf("unexpected field type (%T) for Duration, expected google.protobuf.Timestamp ", ft)
+		m.Failf("unexpected field type (%T) for Timestamp, expected google.protobuf.Timestamp ", ft)
 	}
 	v := strings.TrimSpace(r)
 	if strings.ToLower(v) == "now" {
