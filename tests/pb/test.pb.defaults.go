@@ -104,3 +104,22 @@ func (x *Test) Default() {
 		x.Bytes = []byte("??")
 	}
 }
+
+func (x *TestOptional) Default() {
+	if x.StringField == nil {
+		v := string("string_field")
+		x.StringField = &v
+	}
+	if x.NumberField == nil {
+		v := int64(42)
+		x.NumberField = &v
+	}
+	if x.BoolField == nil {
+		v := bool(true)
+		x.BoolField = &v
+	}
+	if x.EnumField == nil {
+		v := TestOptional_Type(2)
+		x.EnumField = &v
+	}
+}

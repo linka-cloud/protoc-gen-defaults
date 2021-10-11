@@ -38,7 +38,7 @@ func (m *Module) genFieldDefaults(f pgs.Field, genOneOfField ...bool) (string, b
 	if emb := f.Type().Embed(); emb != nil {
 		wk = emb.WellKnownType()
 	}
-	if !isOk(genOneOfField) && f.InOneOf() {
+	if !isOk(genOneOfField) && f.InRealOneOf() {
 		if m.isOneOfDone(f.OneOf()) {
 			return "", false
 		}
@@ -164,6 +164,14 @@ func (m *Module) simpleDefaults(f pgs.Field, zero, value interface{}, wk pgs.Wel
 			if x.`, name, ` == nil {
 				x.`, name, ` = &wrapperspb.`, wk, `{Value: `, value, `}
 			}`)
+	}
+	if f.HasOptionalKeyword() {
+		zero = "nil"
+		return fmt.Sprint(`
+		if x.`, name, ` == `, zero, ` {
+			v := `, m.ctx.Type(f).Value(), `(`, value, `)
+			x.`, name, ` = &v 
+		}`)
 	}
 	return fmt.Sprint(`
 		if x.`, name, ` == `, zero, ` {

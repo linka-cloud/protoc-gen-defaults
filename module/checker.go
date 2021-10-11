@@ -63,7 +63,7 @@ func (m *Module) Check(msg pgs.Message) {
 
 		m.CheckFieldRules(f.Type(), &fieldDefaults)
 
-		if f.InOneOf() {
+		if f.InRealOneOf() {
 			m.CheckOneOf(f.OneOf())
 		}
 		m.Pop()
