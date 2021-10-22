@@ -52,6 +52,14 @@ func (m *Module) InitContext(c pgs.BuildContext) {
 	tpl := template.New("fields").Funcs(map[string]interface{}{
 		"package": m.ctx.PackageName,
 		"name":    m.ctx.Name,
+		"defaultMethod": func(m pgs.Message) string {
+			var private bool
+			m.Extension(defaults.E_Unexported, &private)
+			if private {
+				return "_Default"
+			}
+			return "Default"
+		},
 		"comment": func(s string) string {
 			var out string
 			parts := strings.Split(s, "\n")
@@ -148,7 +156,7 @@ var (
 {{ range .AllMessages }}
 
 {{ if gen . }}
-func (x *{{ name . }}) Default() {
+func (x *{{ name . }}) {{ defaultMethod . }}() {
 	{{- if enabled . }}
 		{{- range .Fields }}
 			{{- defaults . }}

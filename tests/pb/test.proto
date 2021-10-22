@@ -69,3 +69,16 @@ message TestOptional {
 	}
 	optional Type enum_field = 4 [(defaults.value).enum = 2];
 }
+
+message TestUnexported {
+	option (defaults.unexported) = true;
+	optional string string_field = 1 [(defaults.value).string = "string_field"];
+	optional int64 number_field = 2 [(defaults.value).int64 = 42];
+	optional bool bool_field = 3 [(defaults.value).bool = true];
+	enum Type {
+		NONE = 0;
+		ONE = 1;
+		TWO = 2;
+	}
+	optional Type enum_field = 4 [(defaults.value).enum = 2];
+}

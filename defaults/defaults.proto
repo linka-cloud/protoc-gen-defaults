@@ -26,6 +26,10 @@ extend google.protobuf.MessageOptions {
 	optional bool disabled = 1171;
 	// Ignore skips generation of default methods for this message.
 	optional bool ignored = 1172;
+	// Unexported generate an unexported defaults method, this can
+	// be useful when we want both the generated defaults and a custom
+	// defaults method that will call the unexported method.
+	optional bool unexported = 1173;
 }
 
 // Defaults values applied at the oneof level

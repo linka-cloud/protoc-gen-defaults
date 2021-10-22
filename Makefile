@@ -15,15 +15,15 @@
 MODULE = go.linka.cloud/protoc-gen-defaults
 
 
-PROTO_BASE_PATH = $(PWD)
-TEST_PROTO_BASE_PATH = $(PWD)/tests/pb
+PROTO_BASE_PATH = .
+TEST_PROTO_BASE_PATH = $(PROTO_BASE_PATH)/tests/pb
 
 INCLUDE_PROTO_PATH = -I$(PROTO_BASE_PATH) \
 	-I $(shell go list -m -f {{.Dir}} google.golang.org/protobuf)
 
 PROTO_OPTS = paths=source_relative
 
-DEFAULTS_PROTO = defaults/defaults.proto
+DEFAULTS_PROTO = $(PROTO_BASE_PATH)/defaults/defaults.proto
 
 $(shell mkdir -p .bin)
 
@@ -48,7 +48,7 @@ defaults-proto:
 
 .PHONY: gen-proto
 gen-proto: defaults-proto install
-	@find $(PROTO_BASE_PATH) -name '*.proto' -type f -exec \
+	@find $(PROTO_BASE_PATH) -name '*.proto' -type f -not -path "$(DEFAULTS_PROTO)" -exec \
     	protoc $(INCLUDE_PROTO_PATH) --go_out=$(PROTO_OPTS):. --defaults_out=$(PROTO_OPTS):. {} \;
 
 .PHONY: lint
