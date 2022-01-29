@@ -281,10 +281,29 @@ message OneOfThree {
 
 ```
 
+### Using reflection / without code generation
+
+Setting protobuf message defaults is also supported using reflection:
+
+```go
+package main
+
+import (
+	pb "..."
+	"go.linka.cloud/protoc-gen-defaults/defaults"
+)
+
+func main() {
+	var msg pb.MyMessage
+	defaults.Apply(&msg)
+}
+
+```
+
 ## TODO
 - [x] docs
 - [x] oneof support
-- [ ] set default values by using [Protobuf reflection](https://pkg.go.dev/google.golang.org/protobuf@v1.27.1/reflect/protoreflect)
+- [x] set default values by using [Protobuf reflection](https://pkg.go.dev/google.golang.org/protobuf@v1.27.1/reflect/protoreflect)
 - [ ] add more generic methods to use as default value, e.g. *uuid*, *bsonid*... ?
 - [ ] repeated support ?
 - [ ] maps support ?
