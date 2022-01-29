@@ -19,19 +19,18 @@ import (
 
 	assert2 "github.com/stretchr/testify/assert"
 	require2 "github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"go.linka.cloud/protoc-gen-defaults/defaults"
 	"go.linka.cloud/protoc-gen-defaults/tests/pb"
 )
 
-func TestDefaults(t *testing.T) {
-	assert := assert2.New(t)
-	require := require2.New(t)
-	now := timestamppb.Now()
-	expect := &pb.Test{
+var (
+	expect = &pb.Test{
 		StringField:          "string_field",
 		NumberField:          42,
 		BoolField:            true,
@@ -52,6 +51,12 @@ func TestDefaults(t *testing.T) {
 		TimeValueFieldWithDefault: &timestamppb.Timestamp{Seconds: -562032000},
 		Bytes:                     []byte("??"),
 	}
+)
+
+func TestDefaults(t *testing.T) {
+	assert := assert2.New(t)
+	require := require2.New(t)
+	now := timestamppb.Now()
 
 	test := &pb.Test{}
 	test.Default()
@@ -62,4 +67,55 @@ func TestDefaults(t *testing.T) {
 
 	_, generated := interface{}(&pb.OneOfOne{}).(interface{ Default() })
 	assert.False(generated)
+}
+
+func TestDefaultsReflect(t *testing.T) {
+	assert := assert2.New(t)
+	require := require2.New(t)
+	now := timestamppb.Now()
+
+	test := &pb.Test{}
+	defaults.Apply(test)
+
+	require.NotNil(test.TimeValueField)
+	assert.InDelta(now.Seconds, test.TimeValueField.Seconds, 1)
+	test.TimeValueField = nil
+	assert.True(proto.Equal(expect, test))
+
+	_, generated := interface{}(&pb.OneOfOne{}).(interface{ Default() })
+	assert.False(generated)
+
+	expect.StringField = "other"
+	test = &pb.Test{StringField: "other"}
+	defaults.Apply(test)
+	require.NotNil(test.TimeValueField)
+	assert.InDelta(now.Seconds, test.TimeValueField.Seconds, 1)
+	test.TimeValueField = nil
+	assert.True(proto.Equal(expect, test))
+}
+
+func TestDefaultsReflectOptionals(t *testing.T) {
+	assert := assert2.New(t)
+
+	enum := pb.TestOptional_TWO
+	expect := &pb.TestOptional{
+		StringField: proto.String("string_field"),
+		NumberField: proto.Int64(42),
+		BoolField:   proto.Bool(true),
+		EnumField:   &enum,
+	}
+
+	test := &pb.TestOptional{}
+	defaults.Apply(test)
+
+	assert.True(proto.Equal(expect, test))
+
+	expect.StringField = proto.String("other")
+	test = &pb.TestOptional{
+		StringField: proto.String("other"),
+	}
+	defaults.Apply(test)
+
+	assert.True(proto.Equal(expect, test))
+
 }
