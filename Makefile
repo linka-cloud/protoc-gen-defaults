@@ -14,16 +14,7 @@
 
 MODULE = go.linka.cloud/protoc-gen-defaults
 
-
-PROTO_BASE_PATH = .
-TEST_PROTO_BASE_PATH = $(PROTO_BASE_PATH)/tests/pb
-
-INCLUDE_PROTO_PATH = -I$(PROTO_BASE_PATH) \
-	-I $(shell go list -m -f {{.Dir}} google.golang.org/protobuf)
-
-PROTO_OPTS = paths=source_relative
-
-DEFAULTS_PROTO = $(PROTO_BASE_PATH)/defaults/defaults.proto
+DEFAULTS_PROTO = defaults/defaults.proto
 
 $(shell mkdir -p .bin)
 
@@ -31,25 +22,27 @@ export GOBIN=$(PWD)/.bin
 
 export PATH := $(GOBIN):$(PATH)
 
+include .bingo/Variables.mk
+
 bin:
-	@go install github.com/golang/protobuf/protoc-gen-go
-	@go install github.com/lyft/protoc-gen-star/protoc-gen-debug
+	@go install github.com/bwplotka/bingo@latest
+	@bingo get
+	@bingo list|tail -n +3|awk '{print $$2}'|xargs -I{} -n1 bash -c 'ln -sf {} $(GOBIN)/$$(bingo list|grep {}|awk "{print \$$1}")'
 
 clean:
 	@rm -rf .bin
-	@find $(PROTO_BASE_PATH) -name '*.pb*.go' -type f -exec rm {} \;
+	@find . -name '*.pb*.go' -type f -exec rm {} \;
 
 .PHONY: proto
 proto: gen-proto lint
 
-.PHONY: defaults-proto
-defaults-proto:
-	@protoc $(INCLUDE_PROTO_PATH) --go_out=$(PROTO_OPTS):. $(DEFAULTS_PROTO)
-
 .PHONY: gen-proto
 gen-proto: defaults-proto install
-	@find $(PROTO_BASE_PATH) -name '*.proto' -type f -not -path "$(DEFAULTS_PROTO)" -exec \
-    	protoc $(INCLUDE_PROTO_PATH) --go_out=$(PROTO_OPTS):. --defaults_out=$(PROTO_OPTS):. {} \;
+	@buf generate
+
+.PHONY: defaults-proto
+defaults-proto: bin
+	@buf generate --template buf.go.yaml --path $(DEFAULTS_PROTO)
 
 .PHONY: lint
 lint:
@@ -57,7 +50,7 @@ lint:
 	@gofmt -w $(PWD)
 
 .PHONY: tests
-tests: proto gen-tests
+tests: proto
 	@go test -v ./module
 	@go test -v ./tests
 
@@ -67,10 +60,5 @@ install:
 	@go install .
 
 .PHONY: gen-debug
-gen-debug: defaults-proto
+gen-debug: proto
 	@protoc -I. --debug_out="debug:." tests/pb/test.proto
-
-.PHONY: gen-tests
-gen-tests:
-	@@find $(TEST_PROTO_BASE_PATH) -name '*.proto' -type f -exec \
-         	protoc $(INCLUDE_PROTO_PATH) --go_out=$(PROTO_OPTS):. --defaults_out=$(PROTO_OPTS):. {} \;

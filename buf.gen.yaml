@@ -1,0 +1,15 @@
+version: v2
+plugins:
+- local: protoc-gen-go
+  out: .
+  opt:
+  - paths=source_relative
+- local: protoc-gen-defaults
+  out: .
+  opt:
+  - paths=source_relative
+- local: protoc-gen-debug
+  out: .
+  opt:
+  - debug
+
