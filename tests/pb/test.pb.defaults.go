@@ -17,6 +17,8 @@
 package pb
 
 import (
+	"github.com/google/uuid"
+	"github.com/rs/xid"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -44,6 +46,11 @@ func (x *Test) Default() {
 	}
 	if v, ok := interface{}(x.MessageField).(interface{ Default() }); ok && x.MessageField != nil {
 		v.Default()
+	}
+	for _, v := range x.RepeatedMessageField {
+		if v, ok := interface{}(v).(interface{ Default() }); ok && v != nil {
+			v.Default()
+		}
 	}
 	if x.NumberValueField == nil {
 		x.NumberValueField = &wrapperspb.Int64Value{Value: 43}
@@ -102,6 +109,26 @@ func (x *Test) Default() {
 	}
 	if len(x.Bytes) == 0 {
 		x.Bytes = []byte("??")
+	}
+	if x.Xid == "" {
+		x.Xid = xid.New().String()
+	}
+	if x.Uuid == "" {
+		x.Uuid = uuid.New().String()
+	}
+	if x.XidPointer == nil {
+		v := string(xid.New().String())
+		x.XidPointer = &v
+	}
+	if x.UuidPointer == nil {
+		v := string(uuid.New().String())
+		x.UuidPointer = &v
+	}
+	if x.XidValue == nil {
+		x.XidValue = &wrapperspb.StringValue{Value: xid.New().String()}
+	}
+	if x.UuidValue == nil {
+		x.UuidValue = &wrapperspb.StringValue{Value: uuid.New().String()}
 	}
 }
 

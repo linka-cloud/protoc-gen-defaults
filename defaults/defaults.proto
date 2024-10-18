@@ -68,7 +68,7 @@ message FieldDefaults {
 		// Complex Field Types
 		uint32 enum = 16;
 		MessageDefaults message = 17;
-		// repeated = 18;
+		RepeatedDefaults repeated = 18;
 		// map      = 19;
 
 		// Well-Known Field Types
@@ -76,7 +76,7 @@ message FieldDefaults {
 		string duration = 21;
 		string timestamp = 22;
 	}
-	reserved 18 to 20;
+	reserved 19 to 20;
 }
 
 // MessageDefaults define the default behaviour for this field.
@@ -85,4 +85,12 @@ message MessageDefaults {
 	optional bool initialize = 1;
 	// Defaults specifies that the messages' defaults should be applied
 	optional bool defaults = 2;
+}
+
+message RepeatedDefaults {
+	// Defaults specifies that the messages' defaults should be applied on each repeated element
+	optional bool defaults = 1;
+	// Value is the default value to set on each repeated element
+	// If Defaults is set, this value must be set as well
+	optional FieldDefaults value = 2;
 }

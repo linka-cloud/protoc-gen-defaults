@@ -102,7 +102,15 @@ func (m *Module) genFieldDefaults(f pgs.Field, genOneOfField ...bool) (string, b
 	case *defaults.FieldDefaults_Bool:
 		return m.simpleDefaults(f, false, fieldDefaults.GetBool(), wk), true
 	case *defaults.FieldDefaults_String_:
-		return m.simpleDefaults(f, `""`, fmt.Sprint(`"`, fieldDefaults.GetString_(), `"`), wk), true
+		v := fieldDefaults.GetString_()
+		switch v {
+		case "uuid":
+			return m.simpleDefaults(f, `""`, fmt.Sprint(`uuid.New().String()`), wk), true
+		case "xid":
+			return m.simpleDefaults(f, `""`, fmt.Sprint(`xid.New().String()`), wk), true
+		default:
+			return m.simpleDefaults(f, `""`, fmt.Sprint(`"`, v, `"`), wk), true
+		}
 	case *defaults.FieldDefaults_Bytes:
 		if wk == pgs.UnknownWKT {
 			return fmt.Sprint(`
@@ -148,6 +156,16 @@ func (m *Module) genFieldDefaults(f pgs.Field, genOneOfField ...bool) (string, b
 		return decl + fmt.Sprint(`
 			if v, ok := interface{}(x.`, name, `).(interface{Default()}); ok && x.`, name, ` != nil {
 				v.Default()
+			}`), true
+	case *defaults.FieldDefaults_Repeated:
+		if fieldDefaults.GetRepeated() != nil && fieldDefaults.GetRepeated().Defaults != nil && !fieldDefaults.GetRepeated().GetDefaults() {
+			return fmt.Sprint("\n// ", name, ": defaults disabled by [(defaults.value).repeated = {defaults: false}]"), true
+		}
+		return fmt.Sprint(`
+			for _, v := range x.`, name, ` {
+				if v, ok := interface{}(v).(interface{Default()}); ok && v != nil {
+					v.Default()
+				}
 			}`), true
 	case nil: // noop
 	default:

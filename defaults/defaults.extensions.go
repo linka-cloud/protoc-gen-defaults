@@ -19,7 +19,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/prometheus/common/model"
+	"github.com/rs/xid"
 	"google.golang.org/protobuf/proto"
 	reflect "google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -45,10 +47,11 @@ func Apply(m proto.Message) {
 	fields := typd.Fields()
 	for i := 0; i < fields.Len(); i++ {
 		f := fields.Get(i)
-		if f.IsList() || f.IsMap() {
+		name := f.Name()
+		if f.IsMap() || (f.IsList() && f.Kind() != reflect.MessageKind) {
 			continue
 		}
-		if mref.Has(f) {
+		if mref.Has(f) && !f.IsList() {
 			continue
 		}
 		v := proto.GetExtension(f.Options(), E_Value)
@@ -60,7 +63,6 @@ func Apply(m proto.Message) {
 			// wtf ???
 			continue
 		}
-		name := f.Name()
 		if oo := f.ContainingOneof(); oo != nil && !oo.IsSynthetic() {
 			v := proto.GetExtension(oo.Options(), E_Oneof)
 			oon, ok := v.(string)
@@ -147,15 +149,25 @@ func Apply(m proto.Message) {
 			if _, ok := fd.GetType().(*FieldDefaults_String_); !ok {
 				continue
 			}
-			mref.Set(f, reflect.ValueOf(fd.GetString_()))
+			mref.Set(f, reflect.ValueOf(stringDefault(fd.GetString_())))
 		case reflect.BytesKind:
 			if _, ok := fd.GetType().(*FieldDefaults_Bytes); !ok {
 				continue
 			}
 			mref.Set(f, reflect.ValueOf(fd.GetBytes()))
 		case reflect.MessageKind:
-			m := fd.GetMessage()
-			switch mref.Get(f).Message().Interface().(type) {
+			if f.IsList() {
+				if fd.GetRepeated() != nil && fd.GetRepeated().Defaults != nil && !fd.GetRepeated().GetDefaults() {
+					continue
+				}
+				v := mref.Get(f)
+				for i := 0; i < v.List().Len(); i++ {
+					Apply(v.List().Get(i).Message().Interface())
+				}
+				continue
+			}
+			m := mref.Get(f).Message()
+			switch m.Interface().(type) {
 			case *durationpb.Duration:
 				if _, ok := fd.GetType().(*FieldDefaults_Duration); !ok {
 					continue
@@ -214,7 +226,7 @@ func Apply(m proto.Message) {
 				if _, ok := fd.GetType().(*FieldDefaults_String_); !ok {
 					continue
 				}
-				mref.Set(f, reflect.ValueOf(wrapperspb.String(fd.GetString_()).ProtoReflect()))
+				mref.Set(f, reflect.ValueOf(wrapperspb.String(stringDefault(fd.GetString_())).ProtoReflect()))
 			case *wrapperspb.BytesValue:
 				if _, ok := fd.GetType().(*FieldDefaults_Bytes); !ok {
 					continue
@@ -224,6 +236,7 @@ func Apply(m proto.Message) {
 				if _, ok := fd.GetType().(*FieldDefaults_Message); !ok {
 					continue
 				}
+				m := fd.GetMessage()
 				if !mref.Get(f).Message().IsValid() {
 					if !m.GetInitialize() {
 						continue
@@ -234,6 +247,7 @@ func Apply(m proto.Message) {
 					continue
 				}
 				Apply(mref.Get(f).Message().Interface())
+				continue
 			}
 		case reflect.GroupKind:
 		}
@@ -255,4 +269,15 @@ func parseTime(s string) (time.Time, error) {
 		}
 	}
 	return time.Time{}, errors.New("cannot parse timestamp, timestamp supported format: RFC822 / RFC822Z / RFC850 / RFC1123 / RFC1123Z / RFC3339")
+}
+
+func stringDefault(v string) string {
+	switch v {
+	case "uuid":
+		return uuid.New().String()
+	case "xid":
+		return xid.New().String()
+	default:
+		return v
+	}
 }

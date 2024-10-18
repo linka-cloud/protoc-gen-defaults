@@ -17,6 +17,8 @@ package tests
 import (
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/rs/xid"
 	assert2 "github.com/stretchr/testify/assert"
 	require2 "github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -53,17 +55,57 @@ var (
 	}
 )
 
+func init() {
+	m := proto.Clone(expect).(*pb.Test)
+	expect.RepeatedMessageField = []*pb.Test{m}
+}
+
+func testAnCleanUpUuidXid(t *testing.T, test *pb.Test) {
+	assert := assert2.New(t)
+	require := require2.New(t)
+
+	require.NotNil(test.UuidValue)
+	require.NotNil(test.UuidPointer)
+	for _, v := range []string{test.UuidValue.Value, *test.UuidPointer, test.Uuid} {
+		_, err := uuid.Parse(v)
+		assert.NoError(err)
+	}
+	test.Uuid = ""
+	test.UuidValue = nil
+	test.UuidPointer = nil
+
+	require.NotNil(test.XidValue)
+	require.NotNil(test.XidPointer)
+	for _, v := range []string{test.XidValue.Value, *test.XidPointer, test.Xid} {
+		_, err := xid.FromString(v)
+		assert.NoError(err)
+	}
+	test.Xid = ""
+	test.XidValue = nil
+	test.XidPointer = nil
+}
+
 func TestDefaults(t *testing.T) {
 	assert := assert2.New(t)
 	require := require2.New(t)
 	now := timestamppb.Now()
 
-	test := &pb.Test{}
+	test := &pb.Test{RepeatedMessageField: []*pb.Test{{}}}
+	// test := &pb.Test{}
 	test.Default()
 	require.NotNil(test.TimeValueField)
 	assert.InDelta(now.Seconds, test.TimeValueField.Seconds, 1)
 	test.TimeValueField = nil
-	assert.Equal(expect, test)
+	require.Len(test.RepeatedMessageField, 1)
+	require.NotNil(test.RepeatedMessageField[0])
+	require.NotNil(test.RepeatedMessageField[0].TimeValueField)
+	assert.InDelta(now.Seconds, test.RepeatedMessageField[0].TimeValueField.Seconds, 1)
+	test.RepeatedMessageField[0].TimeValueField = nil
+
+	testAnCleanUpUuidXid(t, test)
+	testAnCleanUpUuidXid(t, test.RepeatedMessageField[0])
+
+	assert.Equal(expect.String(), test.String())
 
 	_, generated := interface{}(&pb.OneOfOne{}).(interface{ Default() })
 	assert.False(generated)
@@ -74,13 +116,23 @@ func TestDefaultsReflect(t *testing.T) {
 	require := require2.New(t)
 	now := timestamppb.Now()
 
-	test := &pb.Test{}
+	test := &pb.Test{RepeatedMessageField: []*pb.Test{{}}}
 	defaults.Apply(test)
 
 	require.NotNil(test.TimeValueField)
 	assert.InDelta(now.Seconds, test.TimeValueField.Seconds, 1)
 	test.TimeValueField = nil
-	assert.True(proto.Equal(expect, test))
+
+	require.Len(test.RepeatedMessageField, 1)
+	require.NotNil(test.RepeatedMessageField[0])
+	require.NotNil(test.RepeatedMessageField[0].TimeValueField)
+	assert.InDelta(now.Seconds, test.RepeatedMessageField[0].TimeValueField.Seconds, 1)
+	test.RepeatedMessageField[0].TimeValueField = nil
+
+	testAnCleanUpUuidXid(t, test)
+	testAnCleanUpUuidXid(t, test.RepeatedMessageField[0])
+
+	assert.Equal(expect.String(), test.String())
 
 	_, generated := interface{}(&pb.OneOfOne{}).(interface{ Default() })
 	assert.False(generated)
@@ -91,7 +143,13 @@ func TestDefaultsReflect(t *testing.T) {
 	require.NotNil(test.TimeValueField)
 	assert.InDelta(now.Seconds, test.TimeValueField.Seconds, 1)
 	test.TimeValueField = nil
-	assert.True(proto.Equal(expect, test))
+
+	require.Len(test.RepeatedMessageField, 0)
+
+	testAnCleanUpUuidXid(t, test)
+	expect.RepeatedMessageField = nil
+
+	assert.Equal(expect.String(), test.String())
 }
 
 func TestDefaultsReflectOptionals(t *testing.T) {

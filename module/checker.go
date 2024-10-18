@@ -118,6 +118,12 @@ func (m *Module) CheckFieldRules(typ FieldType, fieldDefaults *defaults.FieldDef
 	case *defaults.FieldDefaults_Bool:
 		m.MustType(typ, pgs.BoolT, pgs.BoolValueWKT)
 	case *defaults.FieldDefaults_String_:
+		switch r.String_ {
+		case "xid":
+			m.imports["github.com/rs/xid"] = struct{}{}
+		case "uuid":
+			m.imports["github.com/google/uuid"] = struct{}{}
+		}
 		m.MustType(typ, pgs.StringT, pgs.StringValueWKT)
 	case *defaults.FieldDefaults_Bytes:
 		m.MustType(typ, pgs.BytesT, pgs.BytesValueWKT)
@@ -130,6 +136,8 @@ func (m *Module) CheckFieldRules(typ FieldType, fieldDefaults *defaults.FieldDef
 		m.CheckTimestamp(typ, r.Timestamp)
 	case *defaults.FieldDefaults_Message:
 		m.MustType(typ, pgs.MessageT, pgs.UnknownWKT)
+	case *defaults.FieldDefaults_Repeated:
+		m.CheckRepeated(typ)
 	case nil: // noop
 	default:
 		m.Failf("unknown rule type (%T)", fieldDefaults.Type)
@@ -213,6 +221,13 @@ func (m *Module) CheckTimestamp(ft FieldType, r string) {
 	}
 	_, err := parseTime(r)
 	m.Assert(err == nil, r, ": ", err)
+}
+
+func (m *Module) CheckRepeated(ft FieldType) {
+	typ := m.mustFieldType(ft)
+	m.Assert(typ.IsRepeated(), "field is not repeated but got repeated rules")
+
+	m.Assert(typ.Element().IsEmbed(), "repeated defaults are only supported for message types")
 }
 
 func (m *Module) mustFieldType(ft FieldType) pgs.FieldType {

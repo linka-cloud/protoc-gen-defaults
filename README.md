@@ -304,7 +304,7 @@ func main() {
 - [x] docs
 - [x] oneof support
 - [x] set default values by using [Protobuf reflection](https://pkg.go.dev/google.golang.org/protobuf@v1.27.1/reflect/protoreflect)
-- [ ] add more generic methods to use as default value, e.g. *uuid*, *bsonid*... ?
+- [ ] add more generic methods to use as default value, e.g. *uuid*, *xid*, *bsonid*... ?
 - [ ] repeated support ?
 - [ ] maps support ?
 - [x] bytes support
